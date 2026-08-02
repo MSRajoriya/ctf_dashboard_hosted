@@ -28,3 +28,4 @@ jobs:
           git add index.html
           git diff --staged --quiet || git commit -m "chore: refresh CTF dashboard $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
+# trigger reindex
