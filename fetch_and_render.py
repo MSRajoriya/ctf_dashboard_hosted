@@ -1,0 +1,380 @@
+#!/usr/bin/env python3
+"""
+CTF Tracker — fetches live/upcoming CTF events from CTFtime and renders
+a static HTML dashboard with embedded data (Chart.js for visuals).
+
+Why server-side: ctftime.org/api does not send Access-Control-Allow-Origin,
+so a browser-side fetch() from the dashboard itself is blocked by CORS.
+Fetching here (no browser involved) sidesteps that entirely. Run this on
+a cron interval; the HTML it produces is what you keep open in a browser.
+
+Usage:
+    python3 fetch_and_render.py [--limit N] [--window-days N] [--out PATH]
+
+No third-party deps — stdlib only (urllib), so it runs anywhere Python 3
+is available in your WSL environment without a venv.
+"""
+
+import argparse
+import json
+import sys
+import time
+import urllib.error
+import urllib.request
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+CTFTIME_API = "https://ctftime.org/api/v1/events/"
+# CTFtime blocks generic/empty User-Agents — identify honestly.
+HEADERS = {"User-Agent": "ctf-dashboard/1.0 (personal tracker; +local use)"}
+TIMEOUT = 15
+
+
+def fetch_events(limit: int, window_days: int) -> list[dict]:
+    now = datetime.now(timezone.utc)
+    start_ts = int((now - timedelta(days=2)).timestamp())   # small lookback to catch already-live events
+    finish_ts = int((now + timedelta(days=window_days)).timestamp())
+
+    params = f"?limit={limit}&start={start_ts}&finish={finish_ts}"
+    url = CTFTIME_API + params
+    req = urllib.request.Request(url, headers=HEADERS)
+
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            if resp.status != 200:
+                raise RuntimeError(f"CTFtime API returned HTTP {resp.status}")
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"CTFtime API HTTP error: {e.code} {e.reason}") from e
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Network error reaching CTFtime API: {e.reason}") from e
+
+    if not isinstance(data, list):
+        raise RuntimeError("Unexpected CTFtime API response shape (expected a list)")
+    return data
+
+
+def normalize(events: list[dict]) -> list[dict]:
+    """Keep only online events (solo-joinable in principle) and shape fields
+    the template needs. CTFtime has no explicit 'solo' flag — 'onsite: false'
+    is the closest proxy, per your filtering choice."""
+    now = datetime.now(timezone.utc)
+    out = []
+    for e in events:
+        if e.get("onsite") is True:
+            continue  # exclude physical/onsite-only events
+
+        try:
+            start = datetime.fromisoformat(e["start"].replace("Z", "+00:00"))
+            finish = datetime.fromisoformat(e["finish"].replace("Z", "+00:00"))
+        except (KeyError, ValueError):
+            continue  # skip malformed entries rather than crash the whole run
+
+        status = "LIVE" if start <= now <= finish else "UPCOMING"
+
+        organizers = ", ".join(o.get("name", "?") for o in e.get("organizers", [])) or "Unknown"
+
+        out.append({
+            "id": e.get("id"),
+            "title": e.get("title", "Untitled"),
+            "url": e.get("url") or e.get("ctftime_url", ""),
+            "ctftime_url": e.get("ctftime_url", ""),
+            "format": e.get("format", "Unknown"),
+            "restrictions": e.get("restrictions", "Unknown"),
+            "weight": e.get("weight", 0),
+            "organizers": organizers,
+            "start": start.isoformat(),
+            "finish": finish.isoformat(),
+            "status": status,
+        })
+
+    # LIVE first (soonest-ending first), then UPCOMING (soonest-starting first)
+    out.sort(key=lambda x: (x["status"] != "LIVE", x["finish"] if x["status"] == "LIVE" else x["start"]))
+    return out
+
+
+HTML_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ctf-dashboard :: live scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- jsdelivr instead of cdnjs: some browsers' tracking-prevention lists flag cdnjs and silently
+     drop the script, which breaks charts with no visible cause. jsdelivr avoids that in practice.
+     No date-library dependency (moment/date-fns) — the timeline chart uses plain hours-from-now math. -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0e0f; --panel:#12171a; --panel-line:#233034; --text:#d9dfe0;
+    --muted:#5c6b70; --amber:#ffb238; --red:#ff5d5d; --green:#5ee6a8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Mono', monospace; font-size:14px;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:24px 20px 60px;}
+  .statusbar{
+    display:flex; justify-content:space-between; align-items:center;
+    border:1px solid var(--panel-line); background:var(--panel);
+    padding:10px 16px; border-radius:4px; margin-bottom:20px; flex-wrap:wrap; gap:8px;
+  }
+  .statusbar .prompt{color:var(--green);}
+  .statusbar .segs{display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--muted);}
+  .statusbar .segs b{color:var(--text);}
+  .pulse-dot{
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--red); margin-right:6px; animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,93,93,0.6);}70%{box-shadow:0 0 0 7px rgba(255,93,93,0);}100%{box-shadow:0 0 0 0 rgba(255,93,93,0);}}
+  h1{
+    font-family:'Space Mono', monospace; font-weight:700; font-size:22px;
+    letter-spacing:-0.5px; margin:4px 0 2px;
+  }
+  h1 .accent{color:var(--amber);}
+  .subhead{color:var(--muted); font-size:12.5px; margin-bottom:26px;}
+  .panel{
+    border:1px solid var(--panel-line); background:var(--panel);
+    border-radius:4px; margin-bottom:24px; overflow:hidden;
+  }
+  .panel-title{
+    font-family:'Space Mono', monospace; font-size:12px; letter-spacing:0.5px;
+    color:var(--muted); padding:10px 16px; border-bottom:1px solid var(--panel-line);
+    text-transform:uppercase; display:flex; justify-content:space-between;
+  }
+  .panel-body{padding:16px;}
+  .charts{display:grid; grid-template-columns:1.6fr 1fr; gap:0;}
+  .charts .panel-body{height:280px;}
+  @media (max-width:800px){.charts{grid-template-columns:1fr;}}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{
+    text-align:left; color:var(--muted); font-weight:500; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.5px; padding:6px 10px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  td{padding:8px 10px; border-bottom:1px solid rgba(35,48,52,0.6); vertical-align:top;}
+  tr:hover td{background:rgba(255,178,56,0.04);}
+  a{color:var(--amber); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .tag{
+    display:inline-block; padding:1px 7px; border-radius:3px; font-size:10.5px;
+    font-weight:600; letter-spacing:0.3px;
+  }
+  .tag-live{background:rgba(255,93,93,0.15); color:var(--red); border:1px solid rgba(255,93,93,0.4);}
+  .tag-upcoming{background:rgba(94,230,168,0.12); color:var(--green); border:1px solid rgba(94,230,168,0.35);}
+  .countdown{color:var(--muted); font-size:11.5px;}
+  .empty{color:var(--muted); padding:20px; text-align:center; font-size:12.5px;}
+  footer{color:var(--muted); font-size:11px; text-align:center; margin-top:30px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="statusbar">
+    <div><span class="prompt">root@ctftracker</span>:~$ ./scan.sh --online-only --window=__WINDOW_DAYS__d</div>
+    <div class="segs">
+      <span><span class="pulse-dot"></span><b id="stat-live">0</b> live now</span>
+      <span><b id="stat-upcoming">0</b> upcoming</span>
+      <span>last scan: <b>__SCAN_TIME__</b></span>
+    </div>
+  </div>
+
+  <h1>ctf<span class="accent">_</span>dashboard</h1>
+  <div class="subhead">online, individual-joinable events pulled from CTFtime · onsite-only events excluded · regenerated on cron</div>
+
+  <div class="panel charts">
+    <div>
+      <div class="panel-title">timeline — next events</div>
+      <div class="panel-body"><canvas id="timelineChart"></canvas></div>
+    </div>
+    <div>
+      <div class="panel-title">format breakdown</div>
+      <div class="panel-body"><canvas id="formatChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">event feed</div>
+    <div class="panel-body" style="padding:0;">
+      <table id="eventTable">
+        <thead>
+          <tr><th>status</th><th>event</th><th>format</th><th>restrictions</th><th>weight</th><th>starts / ends</th><th>t-minus</th></tr>
+        </thead>
+        <tbody id="eventBody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg" style="display:none;">no online events in this window — widen --window-days on the next run</div>
+    </div>
+  </div>
+
+  <footer>data: ctftime.org/api · fetched server-side to avoid browser CORS block · this file is static until the next cron run</footer>
+</div>
+
+<script id="event-data" type="application/json">__EVENTS_JSON__</script>
+<script>
+const events = JSON.parse(document.getElementById('event-data').textContent);
+
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function tMinus(iso, status){
+  const target = new Date(iso).getTime();
+  const now = Date.now();
+  const diff = target - now;
+  const abs = Math.abs(diff);
+  const days = Math.floor(abs / 86400000);
+  const hours = Math.floor((abs % 86400000) / 3600000);
+  const mins = Math.floor((abs % 3600000) / 60000);
+  const label = days > 0 ? `${days}d ${hours}h` : (hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
+  if (status === 'LIVE') return `ends in ${label}`;
+  return diff > 0 ? `starts in ${label}` : `started ${label} ago`;
+}
+
+function render(){
+  const tbody = document.getElementById('eventBody');
+  tbody.innerHTML = '';
+  let liveCount = 0, upcomingCount = 0;
+
+  if (events.length === 0){
+    document.getElementById('emptyMsg').style.display = 'block';
+  }
+
+  events.forEach(ev => {
+    if (ev.status === 'LIVE') liveCount++; else upcomingCount++;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="tag ${ev.status === 'LIVE' ? 'tag-live' : 'tag-upcoming'}">${ev.status}</span></td>
+      <td><a href="${ev.ctftime_url || ev.url}" target="_blank" rel="noopener">${ev.title}</a><br><span class="countdown">${ev.organizers}</span></td>
+      <td>${ev.format}</td>
+      <td>${ev.restrictions}</td>
+      <td>${ev.weight}</td>
+      <td>${fmtDate(ev.start)} → ${fmtDate(ev.finish)}</td>
+      <td class="countdown" data-target="${ev.status === 'LIVE' ? ev.finish : ev.start}" data-status="${ev.status}"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('stat-live').textContent = liveCount;
+  document.getElementById('stat-upcoming').textContent = upcomingCount;
+  tickCountdowns();
+}
+
+function tickCountdowns(){
+  document.querySelectorAll('.countdown[data-target]').forEach(el => {
+    el.textContent = tMinus(el.dataset.target, el.dataset.status);
+  });
+}
+setInterval(tickCountdowns, 30000);
+
+render();
+
+// Charts are optional enhancement — if the CDN script didn't load (blocked by
+// tracking prevention, offline, etc.), degrade quietly instead of throwing.
+// The event table above has zero external dependencies and always works.
+if (typeof Chart === 'undefined') {
+  ['timelineChart', 'formatChart'].forEach(id => {
+    const canvas = document.getElementById(id);
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#5c6b70; font-size:12px; padding:20px; text-align:center;';
+    msg.textContent = 'charts unavailable — Chart.js failed to load (blocked by browser or offline). table below is unaffected.';
+    canvas.replaceWith(msg);
+  });
+} else {
+  // Timeline chart — floating horizontal bars using hours-from-now on a plain
+  // linear axis. No date-adapter library needed, which removes a whole class
+  // of "adapter loaded before/after Chart.js" race-condition failures.
+  const upcoming = events.slice(0, 15);
+  const now = Date.now();
+  const toHours = iso => (new Date(iso).getTime() - now) / 3600000;
+
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'bar',
+    data: {
+      labels: upcoming.map(e => e.title.length > 28 ? e.title.slice(0,26) + '…' : e.title),
+      datasets: [{
+        data: upcoming.map(e => [toHours(e.start), toHours(e.finish)]),
+        backgroundColor: upcoming.map(e => e.status === 'LIVE' ? 'rgba(255,93,93,0.75)' : 'rgba(255,178,56,0.65)'),
+        borderRadius: 2,
+        barThickness: 12,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color: '#233034' },
+          ticks: {
+            color: '#5c6b70', font: {family:'IBM Plex Mono', size:10},
+            callback: v => v === 0 ? 'now' : (Math.abs(v) < 24 ? `${v>0?'+':''}${Math.round(v)}h` : `${v>0?'+':''}${Math.round(v/24)}d`)
+          }
+        },
+        y: { grid: { display: false }, ticks: { color: '#d9dfe0', font: {family:'IBM Plex Mono', size:10} } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  // Format breakdown doughnut
+  const formatCounts = {};
+  events.forEach(e => { formatCounts[e.format] = (formatCounts[e.format] || 0) + 1; });
+  new Chart(document.getElementById('formatChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(formatCounts),
+      datasets: [{
+        data: Object.values(formatCounts),
+        backgroundColor: ['#ffb238', '#5ee6a8', '#ff5d5d', '#7aa2ff', '#c792ea', '#5c6b70'],
+        borderColor: '#12171a', borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#d9dfe0', font: {family:'IBM Plex Mono', size:10}, boxWidth:10 } } }
+    }
+  });
+}
+</script>
+</body>
+</html>
+"""
+
+
+def render_html(events: list[dict], window_days: int) -> str:
+    scan_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    html = HTML_TEMPLATE
+    html = html.replace("__EVENTS_JSON__", json.dumps(events))
+    html = html.replace("__SCAN_TIME__", scan_time)
+    html = html.replace("__WINDOW_DAYS__", str(window_days))
+    return html
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Fetch CTFtime events and render a live dashboard")
+    ap.add_argument("--limit", type=int, default=100, help="max events to request from CTFtime")
+    ap.add_argument("--window-days", type=int, default=30, help="how far ahead to look")
+    ap.add_argument("--out", type=str, default=str(Path(__file__).parent / "dashboard.html"))
+    args = ap.parse_args()
+
+    try:
+        raw = fetch_events(args.limit, args.window_days)
+    except RuntimeError as e:
+        print(f"[fetch_and_render] ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    events = normalize(raw)
+    html = render_html(events, args.window_days)
+
+    out_path = Path(args.out)
+    out_path.write_text(html, encoding="utf-8")
+    live = sum(1 for e in events if e["status"] == "LIVE")
+    print(f"[fetch_and_render] wrote {out_path} — {len(events)} events ({live} live) at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+
+if __name__ == "__main__":
+    main()
