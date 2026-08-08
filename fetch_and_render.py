@@ -119,7 +119,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ctf-dashboard :: live scan</title>
+<title>CTF Tracker Dashboard :: live scan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- jsdelivr instead of cdnjs: some browsers' tracking-prevention lists flag cdnjs and silently
@@ -213,7 +213,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="titlerow">
-    <h1>ctf <span>dashboard</span></h1>
+    <h1>CTF Tracker <span>Dashboard</span></h1>
     <div class="author">built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a></div>
   </div>
   <div class="autoupdate">
