@@ -30,6 +30,10 @@ CTFTIME_API = "https://ctftime.org/api/v1/events/"
 HEADERS = {"User-Agent": "ctf-dashboard/1.0 (personal tracker; +local use)"}
 TIMEOUT = 15
 
+# Bump on any user-visible or behavioral change. See CHANGELOG.md for what
+# each version added — keep that file in sync when this number changes.
+VERSION = "1.5.0"
+
 # CTFtime's API does NOT expose challenge-domain categories (web/pwn/rev/crypto/AI) —
 # only 'format' (Jeopardy vs Attack-Defense). This is a best-effort GUESS from
 # keywords in the title/description, checked in priority order below. It is not
@@ -298,6 +302,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <span><b id="stat-upcoming-s">0</b> upcoming</span>
       <span>last scan: <b>__SCAN_TIME__</b></span>
       <span>window: <b>__WINDOW_DAYS__d</b></span>
+      <span>v<b>__VERSION__</b></span>
     </div>
   </div>
 
@@ -334,7 +339,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <footer>data: <a href="https://ctftime.org" target="_blank">ctftime.org/api</a> · fetched server-side to avoid browser CORS block · auto-refreshed via <a href="https://github.com/__AUTHOR__/__REPO__/actions" target="_blank">GitHub Actions</a> · built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a></footer>
+  <footer>data: <a href="https://ctftime.org" target="_blank">ctftime.org/api</a> · fetched server-side to avoid browser CORS block · auto-refreshed via <a href="https://github.com/__AUTHOR__/__REPO__/actions" target="_blank">GitHub Actions</a> · built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a> · v__VERSION__</footer>
 </div>
 
 <script id="event-data" type="application/json">__EVENTS_JSON__</script>
@@ -465,6 +470,7 @@ def render_html(events: list[dict], window_days: int, author: str, repo: str) ->
     html = html.replace("__WINDOW_DAYS__", str(window_days))
     html = html.replace("__AUTHOR__", author)
     html = html.replace("__REPO__", repo)
+    html = html.replace("__VERSION__", VERSION)
     return html
 
 
@@ -475,6 +481,7 @@ def main():
     ap.add_argument("--out", type=str, default=str(Path(__file__).parent / "dashboard.html"))
     ap.add_argument("--author", type=str, default="MSRajoriya", help="GitHub username shown as author credit")
     ap.add_argument("--repo", type=str, default="ctf_dashboard_hosted", help="GitHub repo name, used for the Actions status badge and links")
+    ap.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     args = ap.parse_args()
 
     try:
@@ -489,7 +496,7 @@ def main():
     out_path = Path(args.out)
     out_path.write_text(html, encoding="utf-8")
     live = sum(1 for e in events if e["status"] == "LIVE")
-    print(f"[fetch_and_render] wrote {out_path} — {len(events)} events ({live} live) at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"[fetch_and_render] v{VERSION} — wrote {out_path} — {len(events)} events ({live} live) at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 if __name__ == "__main__":
