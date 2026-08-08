@@ -30,7 +30,7 @@ HEADERS = {"User-Agent": "ctf-dashboard/1.0 (personal tracker; +local use)"}
 TIMEOUT = 15
 
 
-def fetch_events(limit: int, window_days: int) -> list[dict]:
+def fetch_events(limit: int, window_days: int, retries: int = 2) -> list[dict]:
     now = datetime.now(timezone.utc)
     start_ts = int((now - timedelta(days=2)).timestamp())   # small lookback to catch already-live events
     finish_ts = int((now + timedelta(days=window_days)).timestamp())
@@ -39,15 +39,36 @@ def fetch_events(limit: int, window_days: int) -> list[dict]:
     url = CTFTIME_API + params
     req = urllib.request.Request(url, headers=HEADERS)
 
-    try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"CTFtime API returned HTTP {resp.status}")
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raise RuntimeError(f"CTFtime API HTTP error: {e.code} {e.reason}") from e
-    except urllib.error.URLError as e:
-        raise RuntimeError(f"Network error reaching CTFtime API: {e.reason}") from e
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+                if resp.status != 200:
+                    raise RuntimeError(f"CTFtime API returned HTTP {resp.status}")
+                data = json.loads(resp.read().decode("utf-8"))
+            last_error = None
+            break  # success — stop retrying
+        except urllib.error.HTTPError as e:
+            last_error = RuntimeError(f"CTFtime API HTTP error: {e.code} {e.reason}")
+        except urllib.error.URLError as e:
+            last_error = RuntimeError(f"Network error reaching CTFtime API: {e.reason}")
+        except TimeoutError as e:
+            # A raw socket-read timeout (e.g. CTFtime slow to send the response body)
+            # is NOT wrapped as URLError by urllib — it slips past the handlers above
+            # and crashes with a full traceback if left uncaught. Catch it explicitly.
+            last_error = RuntimeError(f"Timed out reading CTFtime API response (attempt {attempt}/{retries})")
+        except json.JSONDecodeError as e:
+            last_error = RuntimeError(f"CTFtime API returned invalid JSON: {e}")
+        except OSError as e:
+            # Covers other low-level network failures (DNS, connection reset, etc.)
+            last_error = RuntimeError(f"Network error reaching CTFtime API: {e}")
+
+        if attempt < retries:
+            time.sleep(2)  # brief pause before retrying — CTFtime can be transiently slow
+
+    if last_error is not None:
+        raise last_error
+
 
     if not isinstance(data, list):
         raise RuntimeError("Unexpected CTFtime API response shape (expected a list)")
