@@ -17,6 +17,7 @@ is available in your WSL environment without a venv.
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -28,6 +29,40 @@ CTFTIME_API = "https://ctftime.org/api/v1/events/"
 # CTFtime blocks generic/empty User-Agents — identify honestly.
 HEADERS = {"User-Agent": "ctf-dashboard/1.0 (personal tracker; +local use)"}
 TIMEOUT = 15
+
+# CTFtime's API does NOT expose challenge-domain categories (web/pwn/rev/crypto/AI) —
+# only 'format' (Jeopardy vs Attack-Defense). This is a best-effort GUESS from
+# keywords in the title/description, checked in priority order below. It is not
+# authoritative — most CTFs don't reveal their actual challenge mix until the
+# event starts. Shown in the UI as "(guessed)" so it's never mistaken for fact.
+CATEGORY_KEYWORDS = [
+    ("AI / ML", [r"\bai\b", r"\bml\b", r"machine learning", r"\bllm\b", r"neural", r"\bgpt\b", r"prompt injection"]),
+    ("Robotics", [r"robot", r"\bdrone\b", r"\biot\b"]),
+    ("Web3 / Blockchain", [r"blockchain", r"web3", r"smart contract", r"solidity"]),
+    ("Web", [r"\bweb\b", r"webapp"]),
+    ("Pwn / Binary", [r"\bpwn\b", r"binary exploitation", r"\bexploit\b"]),
+    ("Reverse Eng.", [r"reverse engineering", r"\breversing\b", r"\brev\b"]),
+    ("Crypto", [r"cryptograph", r"\bcrypto\b"]),
+    ("Forensics", [r"forensic"]),
+    ("OSINT", [r"\bosint\b"]),
+    ("Hardware", [r"hardware"]),
+]
+
+
+def guess_categories(title: str, description: str | None) -> list[str]:
+    """Best-effort category guess from keywords in title + description.
+    Returns ['General'] when nothing matches — never leaves the field empty."""
+    text = f"{title} {description or ''}".lower()
+    # Common CTF naming pattern: category word glued directly to "ctf" with no
+    # space (CryptoCTF, WebCTF, PwnCTF, RevCTF...). Split it off so \b-bounded
+    # keyword matching below still catches these, without loosening the regex
+    # itself (which would cause false positives like "webinar" matching "web").
+    text = re.sub(r"(?<=[a-z])ctf\b", " ctf", text)
+    matched = []
+    for label, patterns in CATEGORY_KEYWORDS:
+        if any(re.search(p, text) for p in patterns):
+            matched.append(label)
+    return matched if matched else ["General"]
 
 
 def fetch_events(limit: int, window_days: int, retries: int = 2) -> list[dict]:
@@ -139,6 +174,8 @@ def normalize(events: list[dict], fetch_countries: bool = True) -> list[dict]:
                 country_code = fetch_team_country(first_org_id, country_cache)
                 flag = country_to_flag(country_code)
 
+        categories = guess_categories(e.get("title", ""), e.get("description"))
+
         out.append({
             "id": e.get("id"),
             "title": e.get("title", "Untitled"),
@@ -150,6 +187,7 @@ def normalize(events: list[dict], fetch_countries: bool = True) -> list[dict]:
             "organizers": organizers,
             "country_code": country_code,
             "flag": flag,
+            "categories": categories,
             "start": start.isoformat(),
             "finish": finish.isoformat(),
             "status": status,
@@ -240,6 +278,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .tag-live{background:rgba(251,113,133,0.14); color:var(--coral);}
   .tag-upcoming{background:rgba(45,212,191,0.12); color:var(--teal);}
   .fmt-chip{background:rgba(167,139,250,0.14); color:var(--violet); padding:2px 8px; border-radius:6px; font-size:11.5px;}
+  .cat-chip{
+    display:inline-block; background:rgba(56,189,248,0.13); color:var(--sky);
+    padding:2px 8px; border-radius:6px; font-size:10.5px; margin:1px 3px 1px 0; white-space:nowrap;
+  }
+  .cat-chip.highlight{background:rgba(251,113,133,0.16); color:var(--coral); font-weight:600;}
   .countdown{color:var(--gold); font-size:11.5px; font-weight:600;}
   .empty{color:var(--muted); padding:20px; text-align:center; font-size:12.5px;}
   footer{color:var(--muted); font-size:11px; text-align:center; margin-top:30px;}
@@ -284,7 +327,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="panel-title">Event feed</div>
     <div class="panel-body" style="padding:0;">
       <table>
-        <thead><tr><th>Status</th><th>Event</th><th>Format</th><th>Restrictions</th><th>Weight</th><th>Window (IST)</th><th>T-minus</th></tr></thead>
+        <thead><tr><th>Status</th><th>Event</th><th>Format</th><th title="Guessed from title/description keywords — CTFtime doesn't expose real challenge categories">Category (guessed)</th><th>Restrictions</th><th>Weight</th><th>Window (IST)</th><th>T-minus</th></tr></thead>
         <tbody id="eventBody"></tbody>
       </table>
       <div class="empty" id="emptyMsg" style="display:none;">no online events in this window — widen --window-days on the next run</div>
@@ -331,6 +374,7 @@ function render(){
       <td><span class="tag ${e.status==='LIVE'?'tag-live':'tag-upcoming'}">${e.status}</span></td>
       <td><a href="${e.ctftime_url || e.url}" target="_blank" rel="noopener">${e.flag ? e.flag + ' ' : ''}${e.title}</a><br><span style="color:var(--muted); font-size:11px;">${e.organizers}${e.country_code ? ' · ' + e.country_code : ''}</span></td>
       <td><span class="fmt-chip">${e.format}</span></td>
+      <td>${(e.categories||[]).map(c => `<span class="cat-chip${(c==='AI / ML'||c==='Robotics')?' highlight':''}">${c}</span>`).join(' ')}</td>
       <td>${e.restrictions}</td>
       <td>${e.weight}</td>
       <td>${fmtDate(e.start)} → ${fmtDate(e.finish)}</td>
