@@ -75,11 +75,44 @@ def fetch_events(limit: int, window_days: int, retries: int = 2) -> list[dict]:
     return data
 
 
-def normalize(events: list[dict]) -> list[dict]:
+CTFTIME_TEAM_API = "https://ctftime.org/api/v1/teams/{}/"
+
+
+def country_to_flag(country_code: str | None) -> str:
+    """Convert a 2-letter ISO 3166-1 country code to a flag emoji using the
+    Unicode regional-indicator trick (no lookup table/library needed).
+    Returns empty string for missing/invalid codes rather than a broken glyph."""
+    if not country_code or len(country_code) != 2 or not country_code.isalpha():
+        return ""
+    code = country_code.upper()
+    return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in code)
+
+
+def fetch_team_country(team_id: int, cache: dict) -> str | None:
+    """Look up an organizing team's country via CTFtime's team API.
+    Cached per run since the same organizer runs many events — avoids
+    hammering CTFtime with a duplicate request per event. Fails silently
+    (returns None) on any error; a missing flag is cosmetic, not worth
+    breaking the whole render over."""
+    if team_id in cache:
+        return cache[team_id]
+    try:
+        req = urllib.request.Request(CTFTIME_TEAM_API.format(team_id), headers=HEADERS)
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        country = data.get("country") or None
+    except Exception:
+        country = None
+    cache[team_id] = country
+    return country
+
+
+def normalize(events: list[dict], fetch_countries: bool = True) -> list[dict]:
     """Keep only online events (solo-joinable in principle) and shape fields
     the template needs. CTFtime has no explicit 'solo' flag — 'onsite: false'
     is the closest proxy, per your filtering choice."""
     now = datetime.now(timezone.utc)
+    country_cache: dict = {}
     out = []
     for e in events:
         if e.get("onsite") is True:
@@ -93,7 +126,18 @@ def normalize(events: list[dict]) -> list[dict]:
 
         status = "LIVE" if start <= now <= finish else "UPCOMING"
 
-        organizers = ", ".join(o.get("name", "?") for o in e.get("organizers", [])) or "Unknown"
+        org_list = e.get("organizers", [])
+        organizers = ", ".join(o.get("name", "?") for o in org_list) or "Unknown"
+
+        # Country shown = the primary (first-listed) organizing team's country.
+        # CTFtime's event endpoint doesn't expose this directly — it's a
+        # per-team lookup, cached above so repeat organizers cost one request.
+        country_code, flag = None, ""
+        if fetch_countries and org_list:
+            first_org_id = org_list[0].get("id")
+            if first_org_id is not None:
+                country_code = fetch_team_country(first_org_id, country_cache)
+                flag = country_to_flag(country_code)
 
         out.append({
             "id": e.get("id"),
@@ -104,6 +148,8 @@ def normalize(events: list[dict]) -> list[dict]:
             "restrictions": e.get("restrictions", "Unknown"),
             "weight": e.get("weight", 0),
             "organizers": organizers,
+            "country_code": country_code,
+            "flag": flag,
             "start": start.isoformat(),
             "finish": finish.isoformat(),
             "status": status,
@@ -283,7 +329,7 @@ function render(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="tag ${e.status==='LIVE'?'tag-live':'tag-upcoming'}">${e.status}</span></td>
-      <td><a href="${e.ctftime_url || e.url}" target="_blank" rel="noopener">${e.title}</a><br><span style="color:var(--muted); font-size:11px;">${e.organizers}</span></td>
+      <td><a href="${e.ctftime_url || e.url}" target="_blank" rel="noopener">${e.flag ? e.flag + ' ' : ''}${e.title}</a><br><span style="color:var(--muted); font-size:11px;">${e.organizers}${e.country_code ? ' · ' + e.country_code : ''}</span></td>
       <td><span class="fmt-chip">${e.format}</span></td>
       <td>${e.restrictions}</td>
       <td>${e.weight}</td>
