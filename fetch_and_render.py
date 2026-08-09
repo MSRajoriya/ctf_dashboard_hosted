@@ -207,7 +207,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CTF Tracker Dashboard :: live scan</title>
+<title>CTF Tracker Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- jsdelivr instead of cdnjs: some browsers' tracking-prevention lists flag cdnjs and silently
@@ -224,6 +224,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   body{
     margin:0; min-height:100vh; color:var(--text); background:var(--bg);
     font-family:'JetBrains Mono', monospace; font-size:14px; position:relative;
+  }
+  /* Hero background image — darkened heavily (dark gradient overlay does the
+     work) so table/chart text stays readable on top of it. Fixed attachment
+     keeps it steady while the page scrolls. */
+  body::after{
+    content:''; position:fixed; inset:0; z-index:-1;
+    background:
+      linear-gradient(rgba(13,17,23,0.90), rgba(13,17,23,0.94)),
+      url('assets/hero-bg.jpg');
+    background-size:cover; background-position:center 30%; background-attachment:fixed;
   }
   body::before{
     content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
