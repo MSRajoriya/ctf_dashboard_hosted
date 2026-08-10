@@ -2,6 +2,33 @@
 
 All notable changes to the CTF Tracker Dashboard.
 
+## v2.0.0
+- **Filters**: format, category, "Open restriction only", "Favorites only" —
+  client-side, applied on top of the embedded event data.
+- **Sort by weight**: click the Weight column header to cycle asc/desc/off.
+- **Favorites/watchlist**: star toggle per event, persisted via
+  `localStorage` (this is a real deployed site, not a Claude artifact
+  sandbox, so browser storage works normally and persists across visits).
+- **Calendar export**: `generate_ics()` writes a subscribable `calendar.ics`
+  alongside `index.html` on every run — add it to Google Calendar/Outlook/
+  Apple Calendar and it stays current the same way the dashboard does.
+  `update.yml` now commits both files, not just `index.html`.
+- **PWA support**: `manifest.json` + `sw.js` (network-first, offline
+  fallback to last snapshot) + two icons auto-generated from the hero image.
+  Installable on mobile/desktop.
+- **Open Graph / Twitter meta tags**: sharing the live link now shows a
+  proper preview card instead of nothing.
+- **Test suite**: `tests/test_fetch_and_render.py`, 22 tests covering flag
+  conversion, category guessing (including the CryptoCTF/WebCTF compound-name
+  fix and a "webinar" false-positive guard), `normalize()`, the timeout-retry
+  logic, ICS generation/escaping, and placeholder-leftover checks.
+- **CI workflow**: new `.github/workflows/ci.yml`, runs ruff + mypy + pytest
+  on every push — separate from the scheduled data-fetch workflow, so a
+  broken change fails loudly instead of silently shipping.
+- **Lint/type-check config**: `pyproject.toml` (ruff + mypy). Fixed two real
+  issues surfaced while wiring this up: an unused exception variable and an
+  `assert False` anti-pattern in a test.
+
 ## v1.5.0
 - Added best-effort category guessing (AI/ML, Robotics, Web, Pwn, Reverse Eng.,
   Crypto, Forensics, OSINT, Web3, Hardware) from title/description keywords.

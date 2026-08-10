@@ -1,0 +1,19 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",  # line length handled loosely — HTML template lines run long by nature
+    "UP017", # datetime.UTC alias vs timezone.utc — stylistic, both are correct
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+# The HTML_TEMPLATE string and heavy dict-shaping logic aren't worth strict
+# typing — this catches real bugs (wrong arg counts, undefined names) without
+# demanding annotations on every mock-data test helper.
+disallow_untyped_defs = false
+check_untyped_defs = true

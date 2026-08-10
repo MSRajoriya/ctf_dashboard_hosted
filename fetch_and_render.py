@@ -32,7 +32,7 @@ TIMEOUT = 15
 
 # Bump on any user-visible or behavioral change. See CHANGELOG.md for what
 # each version added — keep that file in sync when this number changes.
-VERSION = "1.5.0"
+VERSION = "2.0.0"
 
 # CTFtime's API does NOT expose challenge-domain categories (web/pwn/rev/crypto/AI) —
 # only 'format' (Jeopardy vs Attack-Defense). This is a best-effort GUESS from
@@ -91,7 +91,7 @@ def fetch_events(limit: int, window_days: int, retries: int = 2) -> list[dict]:
             last_error = RuntimeError(f"CTFtime API HTTP error: {e.code} {e.reason}")
         except urllib.error.URLError as e:
             last_error = RuntimeError(f"Network error reaching CTFtime API: {e.reason}")
-        except TimeoutError as e:
+        except TimeoutError:
             # A raw socket-read timeout (e.g. CTFtime slow to send the response body)
             # is NOT wrapped as URLError by urllib — it slips past the handlers above
             # and crashes with a full traceback if left uncaught. Catch it explicitly.
@@ -208,6 +208,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CTF Tracker Dashboard</title>
+<meta name="description" content="Live CTF event tracker — online, individual-joinable events pulled from CTFtime, auto-refreshed every 15 min.">
+<meta property="og:title" content="CTF Tracker Dashboard">
+<meta property="og:description" content="Live CTF event tracker — online, individual-joinable events pulled from CTFtime, auto-refreshed every 15 min.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://__AUTHOR_LOWER__.github.io/__REPO__/">
+<meta property="og:image" content="https://__AUTHOR_LOWER__.github.io/__REPO__/assets/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="CTF Tracker Dashboard">
+<meta name="twitter:description" content="Live CTF event tracker — online, individual-joinable events pulled from CTFtime, auto-refreshed every 15 min.">
+<meta name="theme-color" content="#2dd4bf">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <!-- jsdelivr instead of cdnjs: some browsers' tracking-prevention lists flag cdnjs and silently
@@ -298,6 +311,31 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   }
   .cat-chip.highlight{background:rgba(251,113,133,0.16); color:var(--coral); font-weight:600;}
   .countdown{color:var(--gold); font-size:11.5px; font-weight:600;}
+  .ics-link{
+    font-size:11.5px; color:var(--sky); text-decoration:none; font-family:'Sora',sans-serif; font-weight:600;
+    border:1px solid var(--panel-border); padding:4px 10px; border-radius:6px;
+  }
+  .ics-link:hover{background:rgba(56,189,248,0.1); text-decoration:none;}
+  .filterbar{
+    display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+    padding:12px 20px; border-bottom:1px solid var(--panel-border); background:rgba(255,255,255,0.015);
+  }
+  .filterbar select{
+    background:var(--bg); color:var(--text); border:1px solid var(--panel-border);
+    border-radius:6px; padding:5px 8px; font-family:'JetBrains Mono', monospace; font-size:12px;
+  }
+  .filter-toggle{display:flex; align-items:center; gap:5px; font-size:12px; color:var(--muted); cursor:pointer; user-select:none;}
+  .filter-toggle input{accent-color:var(--teal);}
+  th.sortable{cursor:pointer; user-select:none;}
+  th.sortable:hover{color:var(--teal);}
+  .sort-arrow{opacity:0.5; font-size:9px;}
+  .star-btn{
+    background:none; border:none; cursor:pointer; font-size:15px; padding:0 4px;
+    color:var(--muted); opacity:0.5; transition:opacity 0.15s, transform 0.1s;
+  }
+  .star-btn.active{opacity:1; color:var(--gold);}
+  .star-btn:hover{transform:scale(1.15);}
+  .no-results{color:var(--muted); padding:24px; text-align:center; font-size:12.5px;}
   .empty{color:var(--muted); padding:20px; text-align:center; font-size:12.5px;}
   footer{color:var(--muted); font-size:11px; text-align:center; margin-top:30px;}
   footer a{color:var(--teal); text-decoration:none;}
@@ -339,10 +377,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="panel">
-    <div class="panel-title">Event feed</div>
+    <div class="panel-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <span>Event feed</span>
+      <a href="calendar.ics" class="ics-link" title="Subscribe in Google Calendar / Outlook / Apple Calendar — updates with the dashboard">📅 Add to calendar (.ics)</a>
+    </div>
+    <div class="filterbar">
+      <select id="filterFormat"><option value="">All formats</option></select>
+      <select id="filterCategory"><option value="">All categories</option></select>
+      <label class="filter-toggle"><input type="checkbox" id="filterOpenOnly"> Open restriction only</label>
+      <label class="filter-toggle"><input type="checkbox" id="filterFavOnly"> ⭐ Favorites only</label>
+    </div>
     <div class="panel-body" style="padding:0;">
       <table>
-        <thead><tr><th>Status</th><th>Event</th><th>Format</th><th title="Guessed from title/description keywords — CTFtime doesn't expose real challenge categories">Category (guessed)</th><th>Restrictions</th><th>Weight</th><th>Window (IST)</th><th>T-minus</th></tr></thead>
+        <thead><tr><th></th><th>Status</th><th>Event</th><th>Format</th><th title="Guessed from title/description keywords — CTFtime doesn't expose real challenge categories">Category (guessed)</th><th>Restrictions</th><th class="sortable" id="sortWeight">Weight <span class="sort-arrow">↕</span></th><th>Window (IST)</th><th>T-minus</th></tr></thead>
         <tbody id="eventBody"></tbody>
       </table>
       <div class="empty" id="emptyMsg" style="display:none;">no online events in this window — widen --window-days on the next run</div>
@@ -377,15 +424,38 @@ function render(){
   tbody.innerHTML = '';
   let live=0, upcoming=0, totalWeight=0;
 
-  if (events.length === 0){
-    document.getElementById('emptyMsg').style.display = 'block';
-  }
-
+  // Full-set stats always reflect ALL events, not the filtered view — filters
+  // change what's listed, not the summary counts at the top.
   events.forEach(e=>{
     if(e.status==='LIVE') live++; else upcoming++;
     totalWeight += (e.weight || 0);
+  });
+  document.getElementById('stat-live-s').textContent = live;
+  document.getElementById('stat-upcoming-s').textContent = upcoming;
+  document.getElementById('s-live').textContent = live;
+  document.getElementById('s-upcoming').textContent = upcoming;
+  document.getElementById('s-weight').textContent = events.length ? (totalWeight/events.length).toFixed(1) : '0';
+  document.getElementById('s-formats').textContent = new Set(events.map(e=>e.format)).size;
+
+  const visible = getFilteredSortedEvents();
+  const emptyMsg = document.getElementById('emptyMsg');
+
+  if (events.length === 0){
+    emptyMsg.textContent = 'no online events in this window — widen --window-days on the next run';
+    emptyMsg.style.display = 'block';
+  } else if (visible.length === 0){
+    emptyMsg.textContent = 'no events match the current filters';
+    emptyMsg.style.display = 'block';
+  } else {
+    emptyMsg.style.display = 'none';
+  }
+
+  visible.forEach(e=>{
+    const favKey = eventKey(e);
+    const isFav = favorites.has(favKey);
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td><button class="star-btn${isFav?' active':''}" data-key="${favKey}" title="Toggle favorite" aria-label="Toggle favorite">${isFav?'★':'☆'}</button></td>
       <td><span class="tag ${e.status==='LIVE'?'tag-live':'tag-upcoming'}">${e.status}</span></td>
       <td><a href="${e.ctftime_url || e.url}" target="_blank" rel="noopener">${e.flag ? e.flag + ' ' : ''}${e.title}</a><br><span style="color:var(--muted); font-size:11px;">${e.organizers}${e.country_code ? ' · ' + e.country_code : ''}</span></td>
       <td><span class="fmt-chip">${e.format}</span></td>
@@ -398,14 +468,87 @@ function render(){
     tbody.appendChild(tr);
   });
 
-  document.getElementById('stat-live-s').textContent = live;
-  document.getElementById('stat-upcoming-s').textContent = upcoming;
-  document.getElementById('s-live').textContent = live;
-  document.getElementById('s-upcoming').textContent = upcoming;
-  document.getElementById('s-weight').textContent = events.length ? (totalWeight/events.length).toFixed(1) : '0';
-  document.getElementById('s-formats').textContent = new Set(events.map(e=>e.format)).size;
+  tbody.querySelectorAll('.star-btn').forEach(btn => {
+    btn.addEventListener('click', () => toggleFavorite(btn.dataset.key));
+  });
+
   tickCountdowns();
 }
+
+// --- Favorites (localStorage) ---------------------------------------------
+// This is a real deployed static site (not a Claude artifact sandbox), so
+// localStorage works normally here and persists per-browser across visits.
+const FAV_STORAGE_KEY = 'ctf-dashboard-favorites';
+function eventKey(e){ return e.ctftime_url || e.url || e.title; }
+function loadFavorites(){
+  try {
+    const raw = localStorage.getItem(FAV_STORAGE_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (err) {
+    return new Set(); // corrupted/unavailable storage — degrade to no favorites rather than crash
+  }
+}
+function saveFavorites(){
+  try { localStorage.setItem(FAV_STORAGE_KEY, JSON.stringify([...favorites])); }
+  catch (err) { /* storage full or unavailable — favorites just won't persist this session */ }
+}
+function toggleFavorite(key){
+  if (favorites.has(key)) favorites.delete(key); else favorites.add(key);
+  saveFavorites();
+  render();
+}
+const favorites = loadFavorites();
+
+// --- Filters + sorting -------------------------------------------------
+let sortWeightDir = null; // null = no sort, 'asc', 'desc'
+
+function populateFilterOptions(){
+  const formatSel = document.getElementById('filterFormat');
+  const catSel = document.getElementById('filterCategory');
+  const formats = [...new Set(events.map(e => e.format))].sort();
+  const categories = [...new Set(events.flatMap(e => e.categories || []))].sort();
+  formats.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    formatSel.appendChild(opt);
+  });
+  categories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+}
+
+function getFilteredSortedEvents(){
+  const fmt = document.getElementById('filterFormat').value;
+  const cat = document.getElementById('filterCategory').value;
+  const openOnly = document.getElementById('filterOpenOnly').checked;
+  const favOnly = document.getElementById('filterFavOnly').checked;
+
+  let list = events.filter(e => {
+    if (fmt && e.format !== fmt) return false;
+    if (cat && !(e.categories || []).includes(cat)) return false;
+    if (openOnly && e.restrictions !== 'Open') return false;
+    if (favOnly && !favorites.has(eventKey(e))) return false;
+    return true;
+  });
+
+  if (sortWeightDir) {
+    list = [...list].sort((a, b) => sortWeightDir === 'asc' ? a.weight - b.weight : b.weight - a.weight);
+  }
+  return list;
+}
+
+document.getElementById('filterFormat').addEventListener('change', render);
+document.getElementById('filterCategory').addEventListener('change', render);
+document.getElementById('filterOpenOnly').addEventListener('change', render);
+document.getElementById('filterFavOnly').addEventListener('change', render);
+document.getElementById('sortWeight').addEventListener('click', () => {
+  sortWeightDir = sortWeightDir === 'asc' ? 'desc' : (sortWeightDir === 'desc' ? null : 'asc');
+  const arrow = document.querySelector('#sortWeight .sort-arrow');
+  arrow.textContent = sortWeightDir === 'asc' ? '↑' : (sortWeightDir === 'desc' ? '↓' : '↕');
+  render();
+});
 
 function tickCountdowns(){
   document.querySelectorAll('.countdown[data-target]').forEach(el=>{
@@ -414,6 +557,7 @@ function tickCountdowns(){
 }
 setInterval(tickCountdowns, 30000);
 
+populateFilterOptions();
 render();
 
 // Charts are optional enhancement — if the CDN script didn't load (blocked by
@@ -460,6 +604,15 @@ if (typeof Chart === 'undefined') {
     options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{color:'#e8ecf3', font:{family:'JetBrains Mono', size:10}, boxWidth:10}}}}
   });
 }
+
+// PWA: register the service worker so the last snapshot is available offline.
+// Fails silently on browsers without support or if sw.js 404s — this is a
+// progressive enhancement, not something the page depends on.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
@@ -467,6 +620,63 @@ if (typeof Chart === 'undefined') {
 
 
 IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _ics_escape(text: str) -> str:
+    """Escape special characters per RFC 5545 (commas, semicolons, backslashes,
+    newlines) — required or calendar apps can misparse the field boundaries."""
+    return (
+        text.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\n", "\\n")
+    )
+
+
+def generate_ics(events: list[dict]) -> str:
+    """Build a subscribable .ics feed from the current event list. Subscribing
+    (vs. one-time importing) means calendar apps that support live feeds
+    (Google Calendar, Outlook) re-fetch this URL periodically and pick up
+    changes automatically — same idea as the dashboard's own auto-refresh."""
+    now_utc = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//CTF Tracker Dashboard//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:CTF Tracker Dashboard",
+        "X-WR-CALDESC:Online CTF events pulled from CTFtime",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+    ]
+    for e in events:
+        try:
+            start = datetime.fromisoformat(e["start"]).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            finish = datetime.fromisoformat(e["finish"]).astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        except (KeyError, ValueError):
+            continue  # skip malformed entries rather than produce a broken .ics
+        uid = f"{e.get('id', hash(e.get('title', '')))}@ctf-dashboard"
+        summary = _ics_escape(e.get("title", "Untitled"))
+        desc = _ics_escape(
+            f"Format: {e.get('format', 'Unknown')} | Restrictions: {e.get('restrictions', 'Unknown')} "
+            f"| Weight: {e.get('weight', 0)} | Organizers: {e.get('organizers', 'Unknown')}"
+        )
+        url = e.get("ctftime_url") or e.get("url") or ""
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:{uid}",
+            f"DTSTAMP:{now_utc}",
+            f"DTSTART:{start}",
+            f"DTEND:{finish}",
+            f"SUMMARY:{summary}",
+            f"DESCRIPTION:{desc}",
+        ]
+        if url:
+            lines.append(f"URL:{url}")
+        lines.append("END:VEVENT")
+    lines.append("END:VCALENDAR")
+    # RFC 5545 requires CRLF line endings
+    return "\r\n".join(lines) + "\r\n"
 
 
 def render_html(events: list[dict], window_days: int, author: str, repo: str) -> str:
@@ -479,6 +689,7 @@ def render_html(events: list[dict], window_days: int, author: str, repo: str) ->
     html = html.replace("__SCAN_TIME__", scan_time)
     html = html.replace("__WINDOW_DAYS__", str(window_days))
     html = html.replace("__AUTHOR__", author)
+    html = html.replace("__AUTHOR_LOWER__", author.lower())
     html = html.replace("__REPO__", repo)
     html = html.replace("__VERSION__", VERSION)
     return html
@@ -505,8 +716,12 @@ def main():
 
     out_path = Path(args.out)
     out_path.write_text(html, encoding="utf-8")
+
+    ics_path = out_path.parent / "calendar.ics"
+    ics_path.write_text(generate_ics(events), encoding="utf-8")
+
     live = sum(1 for e in events if e["status"] == "LIVE")
-    print(f"[fetch_and_render] v{VERSION} — wrote {out_path} — {len(events)} events ({live} live) at {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"[fetch_and_render] v{VERSION} — wrote {out_path} and {ics_path} — {len(events)} events ({live} live) at {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 if __name__ == "__main__":

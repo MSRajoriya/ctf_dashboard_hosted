@@ -117,6 +117,19 @@ python3 fetch_and_render.py --out index.html
 git add . && git commit -m "chore: regenerate" && git push
 ```
 
+## Running tests / lint locally
+
+```bash
+pip install pytest ruff mypy --break-system-packages
+pytest tests/ -v
+ruff check .
+mypy fetch_and_render.py
+```
+
+Same checks run automatically on every push via `.github/workflows/ci.yml`
+(separate from the scheduled `update.yml` — CI checks code quality, the
+other one just fetches fresh data).
+
 ## Notes / known limitations
 
 - Onsite-only events are excluded (online is the closest proxy CTFtime
