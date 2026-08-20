@@ -226,14 +226,14 @@ def test_render_html_no_leftover_placeholders():
         "restrictions": "Open", "weight": 10, "organizers": [{"id": 1, "name": "X"}],
         "start": iso(now - timedelta(hours=1)), "finish": iso(now + timedelta(hours=5)),
     }], fetch_countries=False)
-    html = far.render_html(mock_events, 30, "MSRajoriya", "ctf_dashboard_hosted")
-    for placeholder in ["__AUTHOR__", "__AUTHOR_LOWER__", "__REPO__", "__VERSION__",
+    html = far.render_html(mock_events, 30, "MSRajoriya", "ctf_dashboard_hosted", "https://manishsaini-protfolio.netlify.app/")
+    for placeholder in ["__AUTHOR__", "__AUTHOR_LOWER__", "__REPO__", "__PORTFOLIO__", "__VERSION__",
                          "__SCAN_TIME__", "__WINDOW_DAYS__", "__EVENTS_JSON__"]:
         assert placeholder not in html, f"leftover placeholder: {placeholder}"
 
 
 def test_render_html_uses_jsdelivr_not_cdnjs():
     events = far.normalize([], fetch_countries=False)
-    html = far.render_html(events, 30, "MSRajoriya", "ctf_dashboard_hosted")
+    html = far.render_html(events, 30, "MSRajoriya", "ctf_dashboard_hosted", "https://manishsaini-protfolio.netlify.app/")
     assert 'src="https://cdnjs' not in html
     assert 'src="https://cdn.jsdelivr.net' in html

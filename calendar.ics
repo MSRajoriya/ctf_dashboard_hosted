@@ -1,171 +1,171 @@
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//CTF Tracker Dashboard//EN
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-X-WR-CALNAME:CTF Tracker Dashboard
-X-WR-CALDESC:Online CTF events pulled from CTFtime
-REFRESH-INTERVAL;VALUE=DURATION:PT15M
-BEGIN:VEVENT
-UID:3065@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260821T120000Z
-DTEND:20260823T120000Z
-SUMMARY:BrunnerCTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 24.66 | Organizers: SDU
-URL:https://ctftime.org/event/3065/
-END:VEVENT
-BEGIN:VEVENT
-UID:3159@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260821T140000Z
-DTEND:20260822T140000Z
-SUMMARY:PwnSec CTF 2026 [postponed]
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 33.89 | Organizers: PwnSec
-URL:https://ctftime.org/event/3159/
-END:VEVENT
-BEGIN:VEVENT
-UID:3370@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260821T160000Z
-DTEND:20260823T040000Z
-SUMMARY:z0d1ak CTF Qualifiers
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: z0d1ak
-URL:https://ctftime.org/event/3370/
-END:VEVENT
-BEGIN:VEVENT
-UID:3379@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260822T010000Z
-DTEND:20260823T010000Z
-SUMMARY:Haruulzangi CTF 2026 Qualifier
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: haruulzangi-organizers
-URL:https://ctftime.org/event/3379/
-END:VEVENT
-BEGIN:VEVENT
-UID:3397@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260822T031500Z
-DTEND:20260822T111500Z
-SUMMARY:$N1PH€RS 3.0 CTF
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: Ex0rcists
-URL:https://ctftime.org/event/3397/
-END:VEVENT
-BEGIN:VEVENT
-UID:3400@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260822T070000Z
-DTEND:20260823T070000Z
-SUMMARY:E0F CTF
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: Group 0x1A
-URL:https://ctftime.org/event/3400/
-END:VEVENT
-BEGIN:VEVENT
-UID:3394@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260822T080000Z
-DTEND:20260823T200000Z
-SUMMARY:TallDwarf Hosting: Hosting Takeover
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: TallDwarf Hosting
-URL:https://ctftime.org/event/3394/
-END:VEVENT
-BEGIN:VEVENT
-UID:3290@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260829T000000Z
-DTEND:20260830T000000Z
-SUMMARY:COMPFEST CTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 96.0 | Organizers: CSUI
-URL:https://ctftime.org/event/3290/
-END:VEVENT
-BEGIN:VEVENT
-UID:3385@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260829T070000Z
-DTEND:20260830T070000Z
-SUMMARY:BlackHat MEA CTF Qualification 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 8.1 | Organizers: SAFCSP
-URL:https://ctftime.org/event/3385/
-END:VEVENT
-BEGIN:VEVENT
-UID:3033@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260829T140000Z
-DTEND:20260830T140000Z
-SUMMARY:ASIS CTF Quals 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 90.53 | Organizers: ASIS
-URL:https://ctftime.org/event/3033/
-END:VEVENT
-BEGIN:VEVENT
-UID:3347@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260829T140000Z
-DTEND:20260830T050000Z
-SUMMARY:UND CyberHawks National CTF Competition 2026 Qualifiers
-DESCRIPTION:Format: Jeopardy | Restrictions: Casual | Weight: 0 | Organizers: UND CyberHawks
-URL:https://ctftime.org/event/3347/
-END:VEVENT
-BEGIN:VEVENT
-UID:3413@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260829T140000Z
-DTEND:20260830T140000Z
-SUMMARY:Iran Tech Olympics CTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 25.0 | Organizers: ASIS
-URL:https://ctftime.org/event/3413/
-END:VEVENT
-BEGIN:VEVENT
-UID:3097@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260904T160000Z
-DTEND:20260906T160000Z
-SUMMARY:NNS CTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 25.0 | Organizers: Norske Nøkkelsnikere
-URL:https://ctftime.org/event/3097/
-END:VEVENT
-BEGIN:VEVENT
-UID:3344@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260905T100000Z
-DTEND:20260906T100000Z
-SUMMARY:TFC CTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 77.08 | Organizers: The Few Chosen
-URL:https://ctftime.org/event/3344/
-END:VEVENT
-BEGIN:VEVENT
-UID:3145@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260911T100000Z
-DTEND:20260913T100000Z
-SUMMARY:K17 CTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 24.83 | Organizers: K17
-URL:https://ctftime.org/event/3145/
-END:VEVENT
-BEGIN:VEVENT
-UID:3360@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260911T120000Z
-DTEND:20260912T120000Z
-SUMMARY:CAT CTF 26
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: 0xL4ugh
-URL:https://ctftime.org/event/3360/
-END:VEVENT
-BEGIN:VEVENT
-UID:3348@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260911T220000Z
-DTEND:20260913T220000Z
-SUMMARY:PatriotCTF 2026
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 35.46 | Organizers: Competitive Cyber at Mason
-URL:https://ctftime.org/event/3348/
-END:VEVENT
-BEGIN:VEVENT
-UID:3346@ctf-dashboard
-DTSTAMP:20260820T180354Z
-DTSTART:20260918T043000Z
-DTEND:20260918T163000Z
-SUMMARY:NullOrigin CTF Qualifiers
-DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: CyberXoX
-URL:https://ctftime.org/event/3346/
-END:VEVENT
-END:VCALENDAR
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//CTF Tracker Dashboard//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:CTF Tracker Dashboard
+X-WR-CALDESC:Online CTF events pulled from CTFtime
+REFRESH-INTERVAL;VALUE=DURATION:PT15M
+BEGIN:VEVENT
+UID:3065@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260821T120000Z
+DTEND:20260823T120000Z
+SUMMARY:BrunnerCTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 24.66 | Organizers: SDU
+URL:https://ctftime.org/event/3065/
+END:VEVENT
+BEGIN:VEVENT
+UID:3159@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260821T140000Z
+DTEND:20260822T140000Z
+SUMMARY:PwnSec CTF 2026 [postponed]
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 33.89 | Organizers: PwnSec
+URL:https://ctftime.org/event/3159/
+END:VEVENT
+BEGIN:VEVENT
+UID:3370@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260821T160000Z
+DTEND:20260823T040000Z
+SUMMARY:z0d1ak CTF Qualifiers
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: z0d1ak
+URL:https://ctftime.org/event/3370/
+END:VEVENT
+BEGIN:VEVENT
+UID:3379@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260822T010000Z
+DTEND:20260823T010000Z
+SUMMARY:Haruulzangi CTF 2026 Qualifier
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: haruulzangi-organizers
+URL:https://ctftime.org/event/3379/
+END:VEVENT
+BEGIN:VEVENT
+UID:3397@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260822T031500Z
+DTEND:20260822T111500Z
+SUMMARY:$N1PH€RS 3.0 CTF
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: Ex0rcists
+URL:https://ctftime.org/event/3397/
+END:VEVENT
+BEGIN:VEVENT
+UID:3400@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260822T070000Z
+DTEND:20260823T070000Z
+SUMMARY:E0F CTF
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: Group 0x1A
+URL:https://ctftime.org/event/3400/
+END:VEVENT
+BEGIN:VEVENT
+UID:3394@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260822T080000Z
+DTEND:20260823T200000Z
+SUMMARY:TallDwarf Hosting: Hosting Takeover
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: TallDwarf Hosting
+URL:https://ctftime.org/event/3394/
+END:VEVENT
+BEGIN:VEVENT
+UID:3290@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260829T000000Z
+DTEND:20260830T000000Z
+SUMMARY:COMPFEST CTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 96.0 | Organizers: CSUI
+URL:https://ctftime.org/event/3290/
+END:VEVENT
+BEGIN:VEVENT
+UID:3385@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260829T070000Z
+DTEND:20260830T070000Z
+SUMMARY:BlackHat MEA CTF Qualification 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 8.1 | Organizers: SAFCSP
+URL:https://ctftime.org/event/3385/
+END:VEVENT
+BEGIN:VEVENT
+UID:3033@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260829T140000Z
+DTEND:20260830T140000Z
+SUMMARY:ASIS CTF Quals 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 90.53 | Organizers: ASIS
+URL:https://ctftime.org/event/3033/
+END:VEVENT
+BEGIN:VEVENT
+UID:3347@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260829T140000Z
+DTEND:20260830T050000Z
+SUMMARY:UND CyberHawks National CTF Competition 2026 Qualifiers
+DESCRIPTION:Format: Jeopardy | Restrictions: Casual | Weight: 0 | Organizers: UND CyberHawks
+URL:https://ctftime.org/event/3347/
+END:VEVENT
+BEGIN:VEVENT
+UID:3413@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260829T140000Z
+DTEND:20260830T140000Z
+SUMMARY:Iran Tech Olympics CTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 25.0 | Organizers: ASIS
+URL:https://ctftime.org/event/3413/
+END:VEVENT
+BEGIN:VEVENT
+UID:3097@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260904T160000Z
+DTEND:20260906T160000Z
+SUMMARY:NNS CTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 25.0 | Organizers: Norske Nøkkelsnikere
+URL:https://ctftime.org/event/3097/
+END:VEVENT
+BEGIN:VEVENT
+UID:3344@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260905T100000Z
+DTEND:20260906T100000Z
+SUMMARY:TFC CTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 77.08 | Organizers: The Few Chosen
+URL:https://ctftime.org/event/3344/
+END:VEVENT
+BEGIN:VEVENT
+UID:3145@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260911T100000Z
+DTEND:20260913T100000Z
+SUMMARY:K17 CTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 24.83 | Organizers: K17
+URL:https://ctftime.org/event/3145/
+END:VEVENT
+BEGIN:VEVENT
+UID:3360@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260911T120000Z
+DTEND:20260912T120000Z
+SUMMARY:CAT CTF 26
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: 0xL4ugh
+URL:https://ctftime.org/event/3360/
+END:VEVENT
+BEGIN:VEVENT
+UID:3348@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260911T220000Z
+DTEND:20260913T220000Z
+SUMMARY:PatriotCTF 2026
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 35.46 | Organizers: Competitive Cyber at Mason
+URL:https://ctftime.org/event/3348/
+END:VEVENT
+BEGIN:VEVENT
+UID:3346@ctf-dashboard
+DTSTAMP:20260820T182304Z
+DTSTART:20260918T043000Z
+DTEND:20260918T163000Z
+SUMMARY:NullOrigin CTF Qualifiers
+DESCRIPTION:Format: Jeopardy | Restrictions: Open | Weight: 0.0 | Organizers: CyberXoX
+URL:https://ctftime.org/event/3346/
+END:VEVENT
+END:VCALENDAR

@@ -32,7 +32,7 @@ TIMEOUT = 15
 
 # Bump on any user-visible or behavioral change. See CHANGELOG.md for what
 # each version added — keep that file in sync when this number changes.
-VERSION = "2.0.0"
+VERSION = "1.5.0"
 
 # CTFtime's API does NOT expose challenge-domain categories (web/pwn/rev/crypto/AI) —
 # only 'format' (Jeopardy vs Attack-Defense). This is a best-effort GUESS from
@@ -356,7 +356,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   <div class="titlerow">
     <h1>CTF Tracker <span>Dashboard</span></h1>
-    <div class="author">built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a></div>
+    <div class="author">built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a> · <a href="__PORTFOLIO__" target="_blank">portfolio</a></div>
   </div>
   <div class="autoupdate">
     <img src="https://github.com/__AUTHOR__/__REPO__/actions/workflows/update.yml/badge.svg" alt="workflow status" />
@@ -396,7 +396,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
-  <footer>data: <a href="https://ctftime.org" target="_blank">ctftime.org/api</a> · fetched server-side to avoid browser CORS block · auto-refreshed via <a href="https://github.com/__AUTHOR__/__REPO__/actions" target="_blank">GitHub Actions</a> · built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a> · v__VERSION__</footer>
+  <footer>data: <a href="https://ctftime.org" target="_blank">ctftime.org/api</a> · fetched server-side to avoid browser CORS block · auto-refreshed via <a href="https://github.com/__AUTHOR__/__REPO__/actions" target="_blank">GitHub Actions</a> · built by <a href="https://github.com/__AUTHOR__" target="_blank">__AUTHOR__</a> · <a href="__PORTFOLIO__" target="_blank">portfolio</a> · v__VERSION__</footer>
 </div>
 
 <script id="event-data" type="application/json">__EVENTS_JSON__</script>
@@ -679,7 +679,7 @@ def generate_ics(events: list[dict]) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
-def render_html(events: list[dict], window_days: int, author: str, repo: str) -> str:
+def render_html(events: list[dict], window_days: int, author: str, repo: str, portfolio: str) -> str:
     # Scan time shown in IST (not the viewer's or server's local time) since this
     # is a personal dashboard meant to be read in IST regardless of where the
     # GitHub Actions runner (which defaults to UTC) actually executed.
@@ -691,6 +691,7 @@ def render_html(events: list[dict], window_days: int, author: str, repo: str) ->
     html = html.replace("__AUTHOR__", author)
     html = html.replace("__AUTHOR_LOWER__", author.lower())
     html = html.replace("__REPO__", repo)
+    html = html.replace("__PORTFOLIO__", portfolio)
     html = html.replace("__VERSION__", VERSION)
     return html
 
@@ -702,6 +703,7 @@ def main():
     ap.add_argument("--out", type=str, default=str(Path(__file__).parent / "dashboard.html"))
     ap.add_argument("--author", type=str, default="MSRajoriya", help="GitHub username shown as author credit")
     ap.add_argument("--repo", type=str, default="ctf_dashboard_hosted", help="GitHub repo name, used for the Actions status badge and links")
+    ap.add_argument("--portfolio", type=str, default="https://manishsaini-protfolio.netlify.app/", help="Portfolio site URL shown as a credit link")
     ap.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     args = ap.parse_args()
 
@@ -712,7 +714,7 @@ def main():
         sys.exit(1)
 
     events = normalize(raw)
-    html = render_html(events, args.window_days, args.author, args.repo)
+    html = render_html(events, args.window_days, args.author, args.repo, args.portfolio)
 
     out_path = Path(args.out)
     out_path.write_text(html, encoding="utf-8")
